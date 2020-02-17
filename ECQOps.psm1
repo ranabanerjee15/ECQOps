@@ -171,10 +171,10 @@ function get-LastADSync
 {
 <#
 	.SYNOPSIS
-		A brief description of the get-LastADSync function.
+		Gets Last AD sync.
 	
 	.DESCRIPTION
-		A detailed description of the get-LastADSync function.
+		Gets last AD sync time stamp.
 	
 	.EXAMPLE
 		PS C:\> get-LastADSync
@@ -225,19 +225,28 @@ function Get-365LicenseStatus
 {
 <#
 	.SYNOPSIS
-		A brief description of the Get-QHLicenseStatus function.
+		Gets Licensing Information for an Office 365 User.
 	
 	.DESCRIPTION
-		A detailed description of the Get-QHLicenseStatus function.
+		This function gets detailed licensing information for any given user or Users. It uses the MSOnline module to get the information.
 	
 	.PARAMETER UserPrincipalName
-		A description of the UserPrincipalName parameter.
+		This is the UserPrincipalName of any user or users in Office 365.
 	
 	.PARAMETER ShowProgress
-		A description of the ShowProgress parameter.
+		This Switch shows progress if there are set or array of users.
 	
 	.EXAMPLE
-		PS C:\> Get-QHLicenseStatus -UserPrincipalName 'value1'
+		PS C:\> Get-QHLicenseStatus -UserPrincipalName 'user1@contoso.com'
+	
+	.EXAMPLE
+		PS C:\> Get-QHLicenseStatus -UserPrincipalName 'user1@contoso.com','user1@contoso.com'
+	
+	.EXAMPLE
+		PS C:\> Get-QHLicenseStatus -UserPrincipalName (Import-csv users.csv) -ShowProgress
+	
+	.EXAMPLE
+		PS C:\> Get-MsolUser -All | Get-QHLicenseStatus
 	
 	.NOTES
 		Additional information about the function.
