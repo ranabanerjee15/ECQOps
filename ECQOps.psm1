@@ -193,21 +193,30 @@ function get-LastADSync
 		try
 		{
 			$MsolInfo = Get-MsolCompanyInformation -ErrorAction Stop
-			$lastSync = $msolInfo.LastDirSyncTime.ToLocalTime()
-			$now = (get-date -ErrorAction Stop).ToLocalTime()
-			$Duration = $now - $LastSync
-			$durationMinsRaw = $duration.TotalMinutes
-			$durationMins = [math]::Round($durationMinsRaw)
-			
-			$obj = [PsCustomObject][Ordered]@{
-				CurrentTime	    = $now
-				LastAADSyncTime = $lastSync
-				TimeElapsed	    = "$durationMins Mins Ago"
-				NextScheduledAADSync = $lastSync.AddMinutes(30)
-				TimeToNextAADSync = "$([math]::Round(($lastSync.AddMinutes(30) - $now).TotalMinutes)) Mins Remaining"
+			If ($MsolInfo.DirectorySynchronizationEnabled)
+			{
+				$lastSync = $msolInfo.LastDirSyncTime.ToLocalTime()
+				$now = (get-date -ErrorAction Stop).ToLocalTime()
+				$Duration = $now - $LastSync
+				$durationMinsRaw = $duration.TotalMinutes
+				$durationMins = [math]::Round($durationMinsRaw)
 				
+				$obj = [PsCustomObject][Ordered]@{
+					CurrentTime	    = $now
+					LastAADSyncTime = $lastSync
+					TimeElapsed	    = "$durationMins Mins Ago"
+					NextScheduledAADSync = $lastSync.AddMinutes(30)
+					TimeToNextAADSync = "$([math]::Round(($lastSync.AddMinutes(30) - $now).TotalMinutes)) Mins Remaining"
+					
+				}
+				Write-Output $obj
 			}
-			Write-Output $obj
+			else
+			{
+				throw "ADSync is NOT ENABLED. [ ADSync Enabled System Status : $($MsolInfo.DirectorySynchronizationEnabled) ]"
+			}
+			
+			
 		}
 		catch
 		{
@@ -808,7 +817,7 @@ function Get-365MFAStatus
 					UserPrincipalName = $UPN
 					MFAState		  = $state
 					MFARegistration   = $MFASetup
-					DefaultMFAMethod	  = $DefaultMethod
+					DefaultMFAMethod  = $DefaultMethod
 					OtherMFAMethods	  = $OtherMethods
 					Details		      = $details
 				}
