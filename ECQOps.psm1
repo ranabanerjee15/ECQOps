@@ -237,16 +237,16 @@ function Get-365LicenseStatus
 		This Switch shows progress if there are set or array of users.
 	
 	.EXAMPLE
-		PS C:\> Get-QHLicenseStatus -UserPrincipalName 'user1@contoso.com'
+		PS C:\> Get-365LicenseStatus -UserPrincipalName 'user1@contoso.com'
 	
 	.EXAMPLE
-		PS C:\> Get-QHLicenseStatus -UserPrincipalName 'user1@contoso.com','user1@contoso.com'
+		PS C:\> Get-365LicenseStatus -UserPrincipalName 'user1@contoso.com','user1@contoso.com'
 	
 	.EXAMPLE
-		PS C:\> Get-QHLicenseStatus -UserPrincipalName (Import-csv users.csv) -ShowProgress
+		PS C:\> Get-365LicenseStatus -UserPrincipalName (Import-csv users.csv) -ShowProgress
 	
 	.EXAMPLE
-		PS C:\> Get-MsolUser -All | Get-QHLicenseStatus
+		PS C:\> Get-MsolUser -All | Get-365LicenseStatus
 	
 	.NOTES
 		Additional information about the function.
@@ -268,6 +268,7 @@ function Get-365LicenseStatus
 		$i = 1
 		$Global:ErrorActionPreference = [System.Management.Automation.ActionPreference]::Stop
 		$Plans = Get-MsolAccountSku -ErrorAction Stop | Select-Object -ExpandProperty AccountSkuId
+		$Company = $Plans[0].Split(':')[0]
 	}
 	process
 	{
@@ -290,30 +291,31 @@ function Get-365LicenseStatus
 							n = 'AccountSku'; e = {
 								switch ($lic | Select-Object AccountSkuid | Select-Object -ExpandProperty AccountSkuid)
 								{
-									'healthqld:ENTERPRISEPACK' { 'E3' }
-									'healthqld:STANDARDPACK' { 'E1' }
-									'healthqld:MFA_STANDALONE' { 'MFA' }
-									'healthqld:POWER_BI_STANDARD' { 'PowerBi Free' }
-									'healthqld:EXCHANGEENTERPRISE' { 'ExchangeOnlinePlan2' }
-									'healthqld:EMS' { 'Enterprise Mobility Security' }
-									'healthqld:FLOW_FREE' { 'Microsoft Flow Free' }
-									'healthqld:POWERAPPS_INDIVIDUAL_USER' { 'PowerApps and Logic Flows' }
-									'healthqld:MCOEV' { 'Phone System' }
-									'healthqld:POWER_BI_PRO' { 'PowerBi Pro' }
-									'healthqld:POWER_BI_ADDON' { 'Power BI for Office 365 Add-On' }
-									'healthqld:POWER_BI_INDIVIDUAL_USER' { 'Power BI Individual User' }
-									'healthqld:ENTERPRISEWITHSCAL' { 'Enterprise Plan E4' }
-									'healthqld:PROJECTONLINE_PLAN_1' { 'Project Online' }
-									'healthqld:PROJECTCLIENT' { 'Project Pro for Office 365' }
-									'healthqld:VISIOCLIENT' { 'Visio Pro Online' }
-									'healthqld:STREAM' { 'Microsoft Stream' }
-									'healthqld:POWERAPPS_VIRAL' { 'Microsoft Power Apps & Flow' }
-									'healthqld:PROJECTESSENTIALS' { 'Project Lite' }
-									'healthqld:PROJECTPROFESSIONAL' { 'Project Professional' }
-									'healthqld:SPZA_IW' { 'App Connect' }
-									'healthqld:PBI_PREMIUM_P1_ADDON' { 'Power Bi Premium' }
-									'healthqld:DYN365_ENTERPRISE_P1_IW' { 'Dynamics 365 P1 Trial for Information Workers' }
-									'healthqld:WINDOWS_STORE' { 'Windows Store for Business' }
+									"$($Company)):ENTERPRISEPACK" { 'E3' }
+									"$($Company):STANDARDPACK" { 'E1' }
+									"$($Company):MFA_STANDALONE" { 'MFA' }
+									"$($Company):POWER_BI_STANDARD" { 'PowerBi Free' }
+									"$($Company):EXCHANGEENTERPRISE" { 'ExchangeOnlinePlan2' }
+									"$($Company):EMS" { 'Enterprise Mobility Security' }
+									"$($Company):FLOW_FREE" { 'Microsoft Flow Free' }
+									"$($Company):POWERAPPS_INDIVIDUAL_USER" { 'PowerApps and Logic Flows' }
+									"$($Company):MCOEV" { 'Phone System' }
+									"$($Company):POWER_BI_PRO" { 'PowerBi Pro' }
+									"$($Company):POWER_BI_ADDON" { 'Power BI for Office 365 Add-On' }
+									"$($Company):POWER_BI_INDIVIDUAL_USER" { 'Power BI Individual User' }
+									"$($Company):ENTERPRISEWITHSCAL" { 'Enterprise Plan E4' }
+									"$($Company):PROJECTONLINE_PLAN_1" { 'Project Online' }
+									"$($Company):PROJECTCLIENT" { 'Project Pro for Office 365' }
+									"$($Company):VISIOCLIENT" { 'Visio Pro Online' }
+									"$($Company):STREAM" { 'Microsoft Stream' }
+									"$($Company):POWERAPPS_VIRAL" { 'Microsoft Power Apps & Flow' }
+									"$($Company):PROJECTESSENTIALS" { 'Project Lite' }
+									"$($Company):PROJECTPROFESSIONAL" { 'Project Professional' }
+									"$($Company):SPZA_IW" { 'App Connect' }
+									"$($Company):PBI_PREMIUM_P1_ADDON" { 'Power Bi Premium' }
+									"$($Company):DYN365_ENTERPRISE_P1_IW" { 'Dynamics 365 P1 Trial for Information Workers' }
+									"$($Company):WINDOWS_STORE" { 'Windows Store for Business' }
+									"$($Company):DEVELOPERPACK" { 'Developer Pack' }
 									default { "$_" }
 								}
 							}
@@ -332,30 +334,31 @@ function Get-365LicenseStatus
 					{
 						$lic = switch ($Plan)
 						{
-							'healthqld:ENTERPRISEPACK' { 'E3' }
-							'healthqld:STANDARDPACK' { 'E1' }
-							'healthqld:MFA_STANDALONE' { 'MFA' }
-							'healthqld:POWER_BI_STANDARD' { 'PowerBi Free' }
-							'healthqld:EXCHANGEENTERPRISE' { 'ExchangeOnlinePlan2' }
-							'healthqld:EMS' { 'Enterprise Mobility Security' }
-							'healthqld:FLOW_FREE' { 'Microsoft Flow Free' }
-							'healthqld:POWERAPPS_INDIVIDUAL_USER' { 'PowerApps and Logic Flows' }
-							'healthqld:MCOEV' { 'Phone System' }
-							'healthqld:POWER_BI_PRO' { 'PowerBi Pro' }
-							'healthqld:POWER_BI_ADDON' { 'Power BI for Office 365 Add-On' }
-							'healthqld:POWER_BI_INDIVIDUAL_USER' { 'Power BI Individual User' }
-							'healthqld:ENTERPRISEWITHSCAL' { 'Enterprise Plan E4' }
-							'healthqld:PROJECTONLINE_PLAN_1' { 'Project Online' }
-							'healthqld:PROJECTCLIENT' { 'Project Pro for Office 365' }
-							'healthqld:VISIOCLIENT' { 'Visio Pro Online' }
-							'healthqld:STREAM' { 'Microsoft Stream' }
-							'healthqld:POWERAPPS_VIRAL' { 'Microsoft Power Apps & Flow' }
-							'healthqld:PROJECTESSENTIALS' { 'Project Lite' }
-							'healthqld:PROJECTPROFESSIONAL' { 'Project Professional' }
-							'healthqld:SPZA_IW' { 'App Connect' }
-							'healthqld:PBI_PREMIUM_P1_ADDON' { 'Power Bi Premium' }
-							'healthqld:DYN365_ENTERPRISE_P1_IW' { 'Dynamics 365 P1 Trial for Information Workers' }
-							'healthqld:WINDOWS_STORE' { 'Windows Store for Business' }
+							"$($Company):ENTERPRISEPACK" { 'E3' }
+							"$($Company):STANDARDPACK" { 'E1' }
+							"$($Company):MFA_STANDALONE" { 'MFA' }
+							"$($Company):POWER_BI_STANDARD" { 'PowerBi Free' }
+							"$($Company):EXCHANGEENTERPRISE" { 'ExchangeOnlinePlan2' }
+							"$($Company):EMS" { 'Enterprise Mobility Security' }
+							"$($Company):FLOW_FREE" { 'Microsoft Flow Free' }
+							"$($Company):POWERAPPS_INDIVIDUAL_USER" { 'PowerApps and Logic Flows' }
+							"$($Company):MCOEV" { 'Phone System' }
+							"$($Company):POWER_BI_PRO" { 'PowerBi Pro' }
+							"$($Company):POWER_BI_ADDON" { 'Power BI for Office 365 Add-On' }
+							"$($Company):POWER_BI_INDIVIDUAL_USER" { 'Power BI Individual User' }
+							"$($Company):ENTERPRISEWITHSCAL" { 'Enterprise Plan E4' }
+							"$($Company):PROJECTONLINE_PLAN_1" { 'Project Online' }
+							"$($Company):PROJECTCLIENT" { 'Project Pro for Office 365' }
+							"$($Company):VISIOCLIENT" { 'Visio Pro Online' }
+							"$($Company):STREAM" { 'Microsoft Stream' }
+							"$($Company):POWERAPPS_VIRAL" { 'Microsoft Power Apps & Flow' }
+							"$($Company):PROJECTESSENTIALS" { 'Project Lite' }
+							"$($Company):PROJECTPROFESSIONAL" { 'Project Professional' }
+							"$($Company):SPZA_IW" { 'App Connect' }
+							"$($Company):PBI_PREMIUM_P1_ADDON" { 'Power Bi Premium' }
+							"$($Company):DYN365_ENTERPRISE_P1_IW" { 'Dynamics 365 P1 Trial for Information Workers' }
+							"$($Company):WINDOWS_STORE" { 'Windows Store for Business' }
+							"$($Company):DEVELOPERPACK" { 'Developer Pack' }
 							default { "$_" }
 						}
 						
@@ -738,7 +741,16 @@ function Get-365MFAStatus
 		A description of the ShowProgress parameter.
 	
 	.EXAMPLE
-		PS C:\> Get-QHMFAStatus -UserPrincipalName 'value1'
+		PS C:\> Get-365MFAStatus -UserPrincipalName 'user1@contoso.com'
+	
+	.EXAMPLE
+		PS C:\> Get-365MFAStatus -UserPrincipalName 'user1@contoso.com','user1@contoso.com'
+	
+	.EXAMPLE
+		PS C:\> Get-365MFAStatus -UserPrincipalName (Import-csv users.csv) -ShowProgress
+	
+	.EXAMPLE
+		PS C:\> Get-MsolUser -All | Get-365MFAStatus
 	
 	.NOTES
 		Additional information about the function.
@@ -780,18 +792,24 @@ function Get-365MFAStatus
 				if ($msol.StrongAuthenticationMethods.Count -eq 0)
 				{
 					$MFASetup = 'NotRegistered'
+					$DefaultMethod = 'None'
+					$OtherMethods = 'None'
 					$details = 'None'
 				}
 				else
 				{
 					$MFASetup = 'Registered'
-					$details = "Default MFA Method : $(($msol.StrongAuthenticationMethods.Where({ $_.'IsDefault' })).MethodType)"
+					$DefaultMethod = "$(($msol.StrongAuthenticationMethods.Where({ $_.'IsDefault' })).MethodType)"
+					$OtherMethods = "$(($msol.StrongAuthenticationMethods.Where({ !($_.'IsDefault') })).MethodType -join (','))"
+					$details = "None"
 				}
 				
 				$prop = [ordered]@{
 					UserPrincipalName = $UPN
 					MFAState		  = $state
 					MFARegistration   = $MFASetup
+					DefaultMFAMethod	  = $DefaultMethod
+					OtherMFAMethods	  = $OtherMethods
 					Details		      = $details
 				}
 			}
@@ -801,6 +819,8 @@ function Get-365MFAStatus
 					UserPrincipalName = $UPN
 					MFAState		  = 'ERROR'
 					MFARegistration   = 'ERROR'
+					DefaultMFAMethod  = 'ERROR'
+					OtherMFAMethods	  = 'ERROR'
 					Details		      = "ERROR : $($_.Exception.Message)"
 				}
 			}
