@@ -729,16 +729,16 @@ function Get-365MFAStatus
 {
 <#
 	.SYNOPSIS
-		A brief description of the Get-QHMFAStatus function.
+		Gets MFA status of any user.
 	
 	.DESCRIPTION
-		A detailed description of the Get-QHMFAStatus function.
+		Gets MFA detailed status for any user like Default MFA method and other configured methods.
 	
 	.PARAMETER UserPrincipalName
-		A description of the UserPrincipalName parameter.
+		This is the User Principal Name of the user, sometimes it can be the Primary Email Address.
 	
 	.PARAMETER ShowProgress
-		A description of the ShowProgress parameter.
+		This will show progress of the command if processing bulk processing. It will not work when used with the pipeline.
 	
 	.EXAMPLE
 		PS C:\> Get-365MFAStatus -UserPrincipalName 'user1@contoso.com'
@@ -886,7 +886,7 @@ function Write-Log
 		PS C:\> Write-QHLog -Type ERROR -Message 'This is an Error log' -Function 'foo-bar'
 	
 	.EXAMPLE
-		PS C:\> Write-QHLog -Type SUCCESS -Message 'This is an Success log' -Function 'foo-bar'
+		PS C:\> Write-QHLog -Type SUCCESS -Message 'This is a Success log' -Function 'foo-bar'
 	
 	.NOTES
 		Additional information about the function.
