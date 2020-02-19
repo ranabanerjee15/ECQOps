@@ -95,57 +95,6 @@ function Connect-365
 	}
 }
 
-function Connect-365AzureAD
-{
-<#
-	.SYNOPSIS
-		Connects to Azure AD Service
-	
-	.DESCRIPTION
-		Connects to Azure AD Service. This uses PowerShell Module 'MSONLINE'. Please make sure you have installed this Module before running this command
-	
-	.PARAMETER Credential
-		This is the credential which you will use to connect to Azure AD Service.
-	
-	.EXAMPLE
-		PS C:\> Connect-365AzureAD -Credential (Get-Credential)
-	
-	.EXAMPLE
-		PS C:\> Connect-365AzureAD -Credential 'Adminuser@domain.onmicrosoft.com'
-	
-	.EXAMPLE
-		PS C:\> Connect-365AzureAD -Credential $cred
-	
-	.NOTES
-		In the above example $cred can be a variable which has your credentials stored.
-#>
-	
-	param
-	(
-		[System.Management.Automation.Credential()]
-		[ValidateNotNull()]
-		[System.Management.Automation.PSCredential]$Credential = [System.Management.Automation.PSCredential]::Empty
-	)
-	try
-	{
-		$FormatEnumerationLimit = -1
-		Write-Host "INFO : Trying to Connect to Azure AD" -ForegroundColor Cyan
-		
-		if ($credential -eq $null)
-		{
-			$credential = Get-Credential -Message "Enter your Credentials" -ErrorAction Stop
-		}
-		Connect-AzureAD -Credential $Credential -ErrorAction Stop
-		Write-Host "SUCCESS : Successfully Connected to Azure AD" -ForegroundColor Green
-		return $true
-	}
-	catch
-	{
-		Write-host "ERROR : $($_.Exception.Message)" -ForegroundColor Magenta
-		return $false
-	}
-}
-
 function Set-FunctionTemplate #Template
 {
 <#
@@ -835,18 +784,11 @@ function Get-365MFAStatus
 	}
 	process
 	{
-		$null = $msol, $state, $MFASetup, $DefaultMethod, $OtherMethods, $details, $obj, $prop
-		
-		Write-Verbose "Starting Process for the users"
-		
 		foreach ($UPN in $UserPrincipalName)
 		{
-			Write-Verbose "Attempting to Check $UPN for MFA"
-			
 			try
 			{
 				$msol = Get-MsolUser -UserPrincipalName $UPN -ErrorAction Stop
-				
 				if ($MSOL.StrongAuthenticationRequirements.State -eq $null)
 				{
 					$state = 'PotentiallyUnlicensed'
@@ -917,7 +859,6 @@ function Get-365MFAStatus
 	{
 		Write-Progress -Activity 'Getting MFA License Status' -Completed
 		$Global:ErrorActionPreference = [System.Management.Automation.ActionPreference]::Continue
-		
 	}
 }
 
@@ -948,13 +889,13 @@ function Write-Log
 		A description of the seperator parameter.
 	
 	.EXAMPLE
-		PS C:\> Write-Log -Type INFO -Message 'This is an information log' -Function 'foo-bar'
+		PS C:\> Write-QHLog -Type INFO -Message 'This is an information log' -Function 'foo-bar'
 	
 	.EXAMPLE
-		PS C:\> Write-Log -Type ERROR -Message 'This is an Error log' -Function 'foo-bar'
+		PS C:\> Write-QHLog -Type ERROR -Message 'This is an Error log' -Function 'foo-bar'
 	
 	.EXAMPLE
-		PS C:\> Write-Log -Type SUCCESS -Message 'This is a Success log' -Function 'foo-bar'
+		PS C:\> Write-QHLog -Type SUCCESS -Message 'This is a Success log' -Function 'foo-bar'
 	
 	.NOTES
 		Additional information about the function.
@@ -1152,32 +1093,3 @@ function Split-Array
 	}
 	return, $outArray
 }
-
-function Get-ScriptDirectory
-{
-	if ($psise)
-	{
-		Split-Path $psise.CurrentFile.FullPath
-	}
-	else
-	{
-		$global:PSScriptRoot
-	}
-}
-
-Function Get-PSScriptRoot
-{
-	$ScriptRoot = ""
-	
-	Try
-	{
-		$ScriptRoot = Get-Variable -Name PSScriptRoot -ValueOnly -ErrorAction Stop
-	}
-	Catch
-	{
-		$ScriptRoot = Split-Path $script:MyInvocation.MyCommand.Path
-	}
-	
-	Write-Output $ScriptRoot
-}
-

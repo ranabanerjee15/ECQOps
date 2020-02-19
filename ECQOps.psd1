@@ -76,7 +76,19 @@
 	NestedModules = @()
 	
 	# Functions to export from this module
-	FunctionsToExport = '*' #For performance, list functions explicitly
+	FunctionsToExport = @(
+		'Connect-365',
+		'Set-FunctionTemplate',
+		'get-LastADSync',
+		'Get-365LicenseStatus',
+		'Enable-365MFA',
+		'Reset-365MFA',
+		'Disable-365MFA',
+		'Get-365MFAStatus',
+		'Write-Log',
+		'Generate-ComplexPassword',
+		'Split-Array'
+	) #For performance, list functions explicitly
 	
 	# Cmdlets to export from this module
 	CmdletsToExport = '*' 
