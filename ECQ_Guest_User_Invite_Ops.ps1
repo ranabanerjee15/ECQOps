@@ -22,14 +22,15 @@
 #endregion Conditions
 
 # *******************
-#	User Variables
+#	User and Email Variables
 # *******************
 #region User and Email Variables
 
 #Directory
-$parent = 'D:\Office365\RB\Deprovops'
+$parent = 'D:\Office365\RB\Deprovops' #need to change 
 
 #Email Settings
+
 $ReportRecipients = 'Rana.Banerjee@ecq.qld.gov.au'
 $SmtpServer = 'Smtp.ecq.qld.gov.au'
 $Subject = 'User Invite Process for Elections Tenant'
@@ -45,7 +46,6 @@ $from = 'Automation@ecq.qld.gov.au'
 
 #Credential clixml for ECQ tenant
 $ECQAzCreds = $(Import-Clixml "$env:USERPROFILE\Cred\ECQAzCred.clixml")
-
 
 #Credential clixml for Elections tenant
 $ElectionsAzCreds = $(Import-Clixml "$env:USERPROFILE\Cred\ElectionsAzCred.clixml")
@@ -76,7 +76,6 @@ $ExcelReport = Join-Path -Path $parent -ChildPath $ExcelReportFileName
 
 #This will show Progress - Yet to impliment
 $showProgress = $true
-
  
 # DO NOT CHANGE THIS. 
 # THIS IS SET DYNAMICALLY BY THE PROCESS.
