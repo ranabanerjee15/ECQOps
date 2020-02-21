@@ -5,7 +5,7 @@
 	 Created on:   	19/02/2020 1:27 PM
 	 Created by:   	Rana Banerjee
 	 Organization: 	ECQ
-	 Filename:     	
+	 Filename:     	ECQ_Guest_User_Invite_Ops.PS1
 	===========================================================================
 	.DESCRIPTION
 		This Script will Invite new users as guest to Elections Tenant SharePoint.
@@ -19,7 +19,23 @@
 # %ForcePlatform% = x64
 #Requires -Module ECQOps,AzureAD,ImportExcel
 
-#endregion CConditionsonditions
+#endregion Conditions
+
+# *******************
+#	User Variables
+# *******************
+#region User and Email Variables
+
+#Directory
+$parent = 'D:\Office365\RB\Deprovops'
+
+#Email Settings
+$ReportRecipients = 'Rana.Banerjee@ecq.qld.gov.au'
+$SmtpServer = 'Smtp.ecq.qld.gov.au'
+$Subject = 'User Invite Process for Elections Tenant'
+$from = 'Automation@ecq.qld.gov.au'
+
+#endregion User Variables
 
 
 # *******************
@@ -27,26 +43,44 @@
 # *******************
 #region Script Variables
 
-$ReportRecipients = 'Rana.Banerjee@ecq.qld.gov.au'
-
+#Credential clixml for ECQ tenant
 $ECQAzCreds = $(Import-Clixml "$env:USERPROFILE\Cred\ECQAzCred.clixml")
-$ElectionsAzCreds = $(Import-Clixml "$env:USERPROFILE\Cred\ECQAzCred.clixml")
+
+
+#Credential clixml for Elections tenant
+$ElectionsAzCreds = $(Import-Clixml "$env:USERPROFILE\Cred\ElectionsAzCred.clixml")
+
+#Process current DateTime
 $dateTime = (Get-date).ToString('dd-MM-yyyy-HH-mm-ss')
-$parent = 'D:\Office365\RB\Deprovops'
+
+#Process Logfile Name and Path
 $LogFileName = "GuestUser_Log_$($dateTime).csv"
 $logfile = Join-Path -Path $parent -ChildPath $LogFileName
-$reportFileName = "GuestUser_Report_$($dateTime).csv"
-$ReportFile = Join-Path -Path $parent -ChildPath $reportFileName
+
+#Invited Users FileName and Path
+$InvitedUsersFileName = "Invited_GuestUsers_$($dateTime).csv"
+$InvitedUsersFile = Join-Path -Path $parent -ChildPath $InvitedUsersFileName
+
+#Skipped Users FileName and Path
+$SkippedUsersFileName = "Skipped_GuestUsers$($dateTime).csv"
+$SkippedUsersFile = Join-Path -Path $parent -ChildPath $SkippedUsersFileName
+
 #$deprovFileName = "Deproved_Report_$($dateTime).csv"
 #$deprovedReport = Join-Path -Path $parent -ChildPath $deprovFileName
 #$SummaryFileName = "HHS_DeProv_Summary_Report.csv"
 #$SummaryReport = Join-Path -Path $parent -ChildPath $SummaryFileName
 
-$day = 15 # Date for Monthly report
-
-$ExcelReportFileName = "Report_$($dateTime).xlsx"
+#Excel Report File
+$ExcelReportFileName = "InvitedUsersReport_$($dateTime).xlsx"
 $ExcelReport = Join-Path -Path $parent -ChildPath $ExcelReportFileName
+
+#This will show Progress - Yet to impliment
 $showProgress = $true
+
+ 
+# DO NOT CHANGE THIS. 
+# THIS IS SET DYNAMICALLY BY THE PROCESS.
+# AT THE BEGNING ITS SET TO TRUE AND CHANGED TO FALSE ON TERMINATING ERROR
 $Script:Proceed = $true
 
 #endregion Script Variables
@@ -342,8 +376,8 @@ function New-ECQUserInvition
 	Try
 	{
 		$paramNewAzureADMSInvitation = @{
-			InvitedUserDisplayName  = "Dean Jullie"
-			InvitedUserEmailAddress = "Dean.Jullie@ecq.qld.gov.au"
+			InvitedUserDisplayName  = $DisplayName
+			InvitedUserEmailAddress = $EmailAddress
 			SendInvitationMessage   = $false
 			InviteRedirectUrl	    = "https://ecqgovelec.sharepoint.com"
 			InvitedUserType		    = 'member'
@@ -375,7 +409,6 @@ function New-ECQUserInvition
 	}
 }
 
-
 #endregion Functions
 
 
@@ -384,69 +417,249 @@ function New-ECQUserInvition
 # *******************
 #region Function Main
 
+#Starting the Main Function
+
 function Main
 {
+	
+	#Will execute process until there is a terminating error
 	while ($script:Proceed)
 	{
+		#Sets the working Directory to parent 
 		Set-Location $parent | Out-Null
 		$msg = "Starting Process Guest User access on Elections Tenant"
-		Write-Log -Type INFO -Function $MyInvocation.InvocationName -Message $msg -OnScreen | Export-Csv $logfile -Append -NoTypeInformation
+		Write-Log -Type INFO -Function $MyInvocation.InvocationName -Message $msg -OnScreen |
+		Export-Csv $logfile -Append -NoTypeInformation
 		
 		$msg = "Connecting to ECQ Tennant"
-		Write-Log -Type INFO -Function $MyInvocation.InvocationName -Message $msg -OnScreen | Export-Csv $logfile -Append -NoTypeInformation
+		Write-Log -Type INFO -Function $MyInvocation.InvocationName -Message $msg -OnScreen |
+		Export-Csv $logfile -Append -NoTypeInformation
 		
+		
+		#Connects to ECQ Azure Tenant
 		Connect-x365AzureAD -Credential $ECQAzCreds
 		
 		$msg = "Retriving Users from ECQ Tennant"
-		Write-Log -Type INFO -Function $MyInvocation.InvocationName -Message $msg -OnScreen | Export-Csv $logfile -Append -NoTypeInformation
+		Write-Log -Type INFO -Function $MyInvocation.InvocationName -Message $msg -OnScreen |
+		Export-Csv $logfile -Append -NoTypeInformation
 		
-		[Array]$ECQUsers = Get-AzureADUser -All $true -ErrorAction SilentlyContinue | Select-Object -ExpandProperty UserPrincipalName
+		#Retrives all the ECQ users with their DisplayName and UserPrincipalName
+		[Array]$ECQUsers = Get-AzureADUser -All $true -ErrorAction SilentlyContinue |
+		Select-Object Displayname,UserPrincipalName
 		
+		
+		#Only processes the ECQ users if it retrives ECQ users
 		if ($ECQUsers.Count -eq 0)
 		{
+			# Terminates the process as nothing to process
 			$msg = "No Users to process or could not retrive any users. Terminating the Process"
-			Write-Log -Type ERROR -Function $MyInvocation.InvocationName -Message $msg -OnScreen | Export-Csv $logfile -Append -NoTypeInformation
+			Write-Log -Type ERROR -Function $MyInvocation.InvocationName -Message $msg -OnScreen |
+			Export-Csv $logfile -Append -NoTypeInformation
 			$script:Proceed = $false
 		}
 		Else
 		{
 			$msg = "Retrived $($ECQUsers.Count) ECQ Users"
-			Write-Log -Type INFO -Function $MyInvocation.InvocationName -Message $msg -OnScreen | Export-Csv $logfile -Append -NoTypeInformation
+			Write-Log -Type INFO -Function $MyInvocation.InvocationName -Message $msg -OnScreen |
+			Export-Csv $logfile -Append -NoTypeInformation
 		}
 		
+		#Disconnects from the ECQ Tenant
 		Disconnect-x365AzureAD
 		
-		$msg = "Connecting to Elections Tennant"
-		Write-Log -Type INFO -Function $MyInvocation.InvocationName -Message $msg -OnScreen | Export-Csv $logfile -Append -NoTypeInformation
 		
+		$msg = "Connecting to Elections Tennant"
+		Write-Log -Type INFO -Function $MyInvocation.InvocationName -Message $msg -OnScreen |
+		Export-Csv $logfile -Append -NoTypeInformation
+		
+		#Connects to Elections Azure Tenant
 		Connect-x365AzureAD -Credential $ElectionsAzCreds
 		
 		$msg = "Retriving Guest Users from Elections Tennant"
-		Write-Log -Type INFO -Function $MyInvocation.InvocationName -Message $msg -OnScreen | Export-Csv $logfile -Append -NoTypeInformation
+		Write-Log -Type INFO -Function $MyInvocation.InvocationName -Message $msg -OnScreen |
+		Export-Csv $logfile -Append -NoTypeInformation
 		
-		[Array]$ElectionsGuestUsers = Get-AzureADUser -Filter "UserType eq 'Guest'" -ErrorAction SilentlyContinue | Select-Object -ExpandProperty UserPrincipalName
+		#Retrives all GUEST users from Elections Tenant with their UserPrincipalName
+		[Array]$ElectionsGuestUsers = Get-AzureADUser -Filter "UserType eq 'Guest'" -ErrorAction SilentlyContinue |
+		Select-Object -ExpandProperty UserPrincipalName
 		
 		if ($ElectionsGuestUsers.Count -eq 0)
 		{
 			$msg = "No Guest Users in Elections Tennant to compare or could not retrive them. Terminating the Process"
-			Write-Log -Type ERROR -Function $MyInvocation.InvocationName -Message $msg -OnScreen | Export-Csv $logfile -Append -NoTypeInformation
+			Write-Log -Type ERROR -Function $MyInvocation.InvocationName -Message $msg -OnScreen |
+			Export-Csv $logfile -Append -NoTypeInformation
 			$script:Proceed = $false
 		}
 		Else
 		{
 			$msg = "Retrived $($ElectionsGuestUsers.Count) Election Users to compare against"
-			Write-Log -Type INFO -Function $MyInvocation.InvocationName -Message $msg -OnScreen | Export-Csv $logfile -Append -NoTypeInformation
+			Write-Log -Type INFO -Function $MyInvocation.InvocationName -Message $msg -OnScreen |
+			Export-Csv $logfile -Append -NoTypeInformation
 		}
 		
 		
-		foreach ($ECQUser in $ECQUsers) {
+		# Create a Generic List to hold the user PsObject
+		#$Processed = New-Object 'System.Collections.Generic.List[psobject]'
+		
+		#Compare Users from both the Tenants
+		$i = 1
+		foreach ($ECQUser in $ECQUsers)
+		{
+			$null = $usrobj
 			
-			if($ElectionsGuestUsers -inotcontains $ECQUser)
+			$msg = "Checking if $($ECQUser.UserPrincipalName) exists in Elections Tenant"
+			Write-Log -Type INFO -Function $MyInvocation.InvocationName -Message $msg -OnScreen |
+			Export-Csv $logfile -Append -NoTypeInformation
+			
+			if($ElectionsGuestUsers -inotcontains $ECQUser.UserPrincipalName)
 			{
+				#Processing needed
 				
-			}
-		}
+				$msg = "User $($ECQUser.UserPrincipalName) Does not exists in Elections Tenant, Trying to send invite now"
+								
+				Write-Log -Type INFO -Function $MyInvocation.InvocationName -Message $msg -OnScreen |
+				Export-Csv $logfile -Append -NoTypeInformation
+				
+				$paramNewECQUserInvition = @{
+					DisplayName = $ECQUser.UserPrincipalName
+					EmailAddress = $ECQUser.UserPrincipalName
+				}
+				
+				$usrobj = New-ECQUserInvition @paramNewECQUserInvition
+				
+				$usrobj | Export-Csv $InvitedUsersFile -Append -NoTypeInformation
 			
+			}
+			Else
+			{
+				# No processing needed
+				
+				$msg = "User $($ECQUser.UserPrincipalName) already exists in Elections Tenant, No Action taken"
+				
+				Write-Log -Type INFO -Function $MyInvocation.InvocationName -Message $msg -OnScreen |
+				Export-Csv $logfile -Append -NoTypeInformation
+				$ECQUser | Export-Csv $SkippedUsersFile -Append -NoTypeInformation
+			}
+			
+			if ($showProgress)
+			{
+				$paramWriteProgress = @{
+					Activity = 'Processing Users for Guest Invite in Elections Tenant'
+					Status   = "Processing [$i] of [$($ECQUsers.Count)] users"
+					PercentComplete = (($i / $ECQUsers.Count) * 100)
+					CurrentOperation = "Completed : [$($ECQUser.UserPrincipalName)]"
+				}
+				
+				Write-Progress @paramWriteProgress
+			}
+			
+		}
+		
+		$msg = "Processed total [$($ECQUsers.count)] out of which Invited [$($Proceed.count)] users."
+		
+		Write-Log -Type INFO -Function $MyInvocation.InvocationName -Message $msg -OnScreen |
+		Export-Csv $logfile -Append -NoTypeInformation
+	}
+	
+	#Process for Users complete
+	
+	#Check for generated log files for report.
+	
+	$msg = "Attempting to generate Excel report"
+	Write-Log -Type INFO -Function $MyInvocation.InvocationName -Message $msg -OnScreen |
+	Export-Csv $logfile -Append -NoTypeInformation
+	
+	if (Test-Path $InvitedUsersFile)
+	{
+		$text1 = New-ConditionalText 'Success' -ConditionalTextColor White -BackgroundColor '#FD625E' -Range C:C
+		$text2 = New-ConditionalText 'Failed' -ConditionalTextColor White -BackgroundColor '#00b359' -Range C:C
+		#$text3 = New-ConditionalText 'PotentiallyUnlicensed' -ConditionalTextColor White -BackgroundColor '#3599B8'
+		$text4 = New-ConditionalText 'ERROR' -ConditionalTextColor Black -BackgroundColor '#F2C80F' -Range D:D
+		
+		$paramExportExcel = @{
+			Path		    = $ExcelReport
+			Show		    = $false
+			AutoSize	    = $true
+			TableName	    = 'InvitedUsers'
+			TableStyle	    = 'Medium20'
+			FreezeTopRow    = $true
+			BoldTopRow	    = $true
+			WorkSheetname   = 'Invited Users'
+			ConditionalText = $text4, $text1, $text2
+			IncludePivotTable = $true
+			#PivotRows	    = 'Status'
+			#PivotData	    = 'Status'
+			#IncludePivotChart = $true
+			#ChartType	    = 'PieExploded3D'
+		}
+		
+		Import-Csv $InvitedUsersFile | Export-Excel @paramExportExcel
+	}
+	
+	if (Test-Path $SkippedUsersFile)
+	{
+		
+	}
+	
+	If (Test-Path $logfile)
+	{
+		$text1 = New-ConditionalText 'ERROR' -ConditionalTextColor White -BackgroundColor '#FD625E' -Range B:B
+		$text2 = New-ConditionalText 'Success' -ConditionalTextColor White -BackgroundColor '#00b359' -Range B:B
+		$text3 = New-ConditionalText 'INFO' -ConditionalTextColor White -BackgroundColor '#3599B8' -Range B:B
+		# $text4 = New-ConditionalText 'ERROR' -ConditionalTextColor Black -BackgroundColor '#F2C80F'
+		
+		$paramExportExcel = @{
+			Path		    = $ExcelReport
+			Show		    = $false
+			AutoSize	    = $true
+			TableName	    = 'TableLogs'
+			TableStyle	    = 'Light8'
+			FreezeTopRow    = $true
+			BoldTopRow	    = $true
+			WorkSheetname   = 'Logs'
+			ConditionalText = $text3, $text1, $text2
+		}
+		Import-Csv $logfile | Export-Excel @paramExportExcel
+		
+	}
+	
+	# Attempting to Email Reports and logs
+	
+	$paramMail = @{ }
+	$paramMail.Subject = $Subject
+	$paramMail.To = $ReportRecipients
+	$paramMail.From = $from
+	$paramMail.SmtpServer = $SmtpServer
+	$paramMail.BodyAsHtml = $true
+	$paramMail.ErrorAction = 'Stop'
+	
+	$attachments = @()
+	
+	$logfile,$InvitedUsersFile,$SkippedUsersFile | ForEach-Object { if (Test-Path $_) { $attachments += $_ } }
+	
+	if ($attachments.count -gt 0)
+	{
+		$paramMail.Attachments = $attachments
+	}
+	
+	try
+	{
+		$msg = "Trying to Email Report to defined recipients"
+		Write-Log -Type INFO -Function $MyInvocation.InvocationName -Message $msg -OnScreen | Export-Csv $LogFile -Append -NoTypeInformation
+		
+		Send-MailMessage @paramMail
+		
+		$msg = "Report successfully Emailed Reports to the defined Recipients"
+		Write-Log -Type SUCCESS -Function $MyInvocation.InvocationName -Message $msg -OnScreen | Export-Csv $LogFile -Append -NoTypeInformation
+		$msg = "Completed the Entire process, Exiting the Process"
+		Write-Log -Type INFO -Function $MyInvocation.InvocationName -Message $msg -OnScreen | Export-Csv $LogFile -Append -NoTypeInformation
+		
+	}
+	catch
+	{
+		$msg = "$($_.Exception.Message)"
+		Write-Log -Type ERROR -Function $MyInvocation.InvocationName -Message $msg -OnScreen | Export-Csv $LogFile -Append -NoTypeInformation
+		
 	}
 }
 
