@@ -31,7 +31,7 @@
 $appId = '5c343be5-0044-447d-930e-bc71e6d417da'
 $TenantID = 'a0ecd844-047a-45c9-8f3f-0a09574d15d2'
 $objectId = '420e96e4-9d4d-4c51-be62-a12a5dfdb125'
-# $secret = 'RjYaR25uu98chNGMQJ:suKZpJZGcq_.['
+$secret = 'RjYaR25uu98chNGMQJ:suKZpJZGcq_.['
 $certThumb = '60C46FE7CC836C17D74C21E9D51338FEF5F94A75'
 
 
@@ -471,7 +471,7 @@ function Main
 		{
 			# Terminates the process as nothing to process
 			$msg = "No Users to process or could not retrive any users. Terminating the Process"
-			Write-Log -Type INFO -Function $MyInvocation.InvocationName -Message $msg -OnScreen |
+			Write-Log -Type ERROR -Function $MyInvocation.InvocationName -Message $msg -OnScreen |
 			Export-Csv $logfile -Append -NoTypeInformation
 			$script:Proceed = $false
 		}
@@ -498,7 +498,7 @@ function Main
 		Export-Csv $logfile -Append -NoTypeInformation
 		
 		#Retrives all GUEST users from Elections Tenant with their UserPrincipalName
-		[Array]$ElectionsGuestUsers = Get-AzureADUser -All $true -Filter "UserType eq 'Member'" -ErrorAction SilentlyContinue |
+		[Array]$ElectionsGuestUsers = Get-AzureADUser -Filter "UserType eq 'Guest'" -ErrorAction SilentlyContinue |
 		Select-Object -ExpandProperty UserPrincipalName
 		
 		if ($ElectionsGuestUsers.Count -eq 0)

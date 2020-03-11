@@ -1181,3 +1181,212 @@ Function Get-PSScriptRoot
 	Write-Output $ScriptRoot
 }
 
+function Connect-OnpremExchange
+{
+<#
+	.SYNOPSIS
+		Connects to Onpremise Exchange server.
+	
+	.DESCRIPTION
+		Connects to Onpremise Exchange Server using logged in credentials. Takes Server's Name or FQDN for Connection
+	
+	.EXAMPLE
+		PS C:\> Connect-QHOnpremExchange -Server "InternalExchangeServer1"
+	
+	.NOTES
+		Additional information about the function.
+	
+	.PARAMETER Server
+		This can be the NetBios name or FQDN of any of your internal Exchange Server which you want to connect to.
+#>
+	
+	[CmdletBinding()]
+	param
+	(
+		[pscredential]$Credential
+	)
+	dynamicparam
+	{
+		$Servers = Get-content "D:\Office365\Migrations\Batch\WorkingExchangeServers.txt" -ErrorAction SilentlyContinue
+		
+		$attributeCollection = new-object -TypeName System.Collections.ObjectModel.Collection[System.Attribute]
+		$attributes = new-object System.Management.Automation.ParameterAttribute
+		$attributes.Mandatory = $true
+		$attributes.ParameterSetName = '__AllParameterSets'
+		
+		$attributeCollection.Add($attributes)
+		
+		if ($null -ne $Servers)
+		{
+			$ValidateSetAttribute = New-Object System.Management.Automation.ValidateSetAttribute($Servers)
+			$AttributeCollection.Add($ValidateSetAttribute)
+		}
+		$ServerParam = new-object -TypeName System.Management.Automation.RuntimeDefinedParameter('Server', [String], $attributeCollection)
+		$paramDictionary = new-object -TypeName System.Management.Automation.RuntimeDefinedParameterDictionary
+		$paramDictionary.Add('Server', $ServerParam)
+		
+		return $paramDictionary
+	}
+	
+	begin
+	{
+		$server = $PSBoundParameters.Server
+	}
+	process
+	{
+		try
+		{
+			$StopWatch = [System.Diagnostics.StopWatch]::StartNew()
+			
+			#Add-PSSnapin -Name Microsoft.Exchange.Management.PowerShell.E2010
+			
+			if ($null -ne $Credential)
+			{
+				$paramNewPSSession = @{
+					ConfigurationName = 'Microsoft.Exchange'
+					ConnectionUri	  = "http://$Server/PowerShell/"
+					Authentication    = 'Kerberos'
+					Credential	      = $Credential
+				}
+			}
+			else
+			{
+				$paramNewPSSession = @{
+					ConfigurationName = 'Microsoft.Exchange'
+					ConnectionUri	  = "http://$Server/PowerShell/"
+					Authentication    = 'Kerberos'
+					
+				}
+			}
+			$Session = New-PSSession @paramNewPSSession
+			$paramImportModule = @{
+				ModuleInfo = (Import-PSSession $Session -AllowClobber -DisableNameChecking)
+				Global	   = $true
+				ErrorAction = 'Stop'
+				WarningAction = 'SilentlyContinue'
+			}
+			
+			Import-Module @paramImportModule
+			$msg = "INFO : Connected to $Server. The Function took $([math]::round($($StopWatch.Elapsed.TotalSeconds), 2)) seconds to Connect to On Premise Exchange"
+			Write-Host $msg -ForegroundColor Cyan
+		}
+		catch
+		{
+			Write-Host "ERROR : $($_.Exception.Message)" -ForegroundColor Magenta
+		}
+	}
+}
+
+function Convert-ExchangeConnectorLogs
+{
+	[CmdletBinding()]
+	param
+	(
+		[Parameter(Mandatory = $true)]
+		$LogsData
+	)
+	
+	BEGIN 
+	{
+		#$data = Get-Content -LiteralPath $Logs
+	}
+	PROCESS
+	{
+		ConvertFrom-Csv -Header UTCDateTime, ConnectorId, SessionID, SequenceNumber, LocalEndpoint, RemoteEndpoint, Event, data, context -Delimiter ',' -InputObject $LogsData |
+		Select-Object UTCDateTime,
+					  @{ N = 'LocalDateTime'; E = { [datetime]$_.UTCDateTime } },
+					  ConnectorID,
+					  SessionID,
+					  SequenceNumber,
+					  LocalEndpoint,
+					  RemoteEndpoint,
+					  Event,
+					  @{
+			N = 'EventInfo'; E = {
+				switch ($_.Event)
+				{
+					'+' { 'Connect' }
+					'-' { 'Disconnect' }
+					'>' { 'Send' }
+					'<' { 'Receive' }
+					'*' { 'Information' }
+					Default { $_ }
+				}
+			}
+		},
+					  Data,
+					  Context
+	}
+	END
+	{
+		
+	}
+	
+	
+}
+
+Function Connect-365MFA
+{
+	$MFAExModule = ((Get-ChildItem -Path $($env:LOCALAPPDATA + "\Apps\2.0\") -Filter CreateExoPSSession.ps1 -Recurse).FullName | Select-Object -Last 1)
+	
+	if ($null -eq $MFAExModule)
+	{
+		Write-Host "No MFA Exchange Online Module found. Attempting to downling it now" -ForegroundColor Cyan
+		
+		try
+		{
+			Start-Process "iexplore.exe" "https://cmdletpswmodule.blob.core.windows.net/exopsmodule/Microsoft.Online.CSE.PSModule.Client.application" -ErrorAction Stop
+			
+		}
+		Catch
+		{
+			Write-Warning "$($_.Exception.Message). Terminating the Process"
+			Break
+			
+		}
+		
+		$MFAExModule = ((Get-ChildItem -Path $($env:LOCALAPPDATA + "\Apps\2.0\") -Filter CreateExoPSSession.ps1 -Recurse).FullName | Select-Object -Last 1)
+	}
+	. "$MFAExModule"
+}
+
+Function Global:Connect-O365WithMFA
+{
+	
+	$ExMfaModule = $((Get-ChildItem -Path $($env:LOCALAPPDATA + "\Apps\2.0") -Filter Microsoft.Exchange.Management.ExoPowershellModule.dll -Recurse).FullName |
+		Where-Object { $_ -notmatch "_none_" } | Select-Object -First 1)
+	
+	if ($null -eq $ExMfaModule)
+	{
+		
+		Try
+		{
+			Start-Process "iexplore.exe" "https://cmdletpswmodule.blob.core.windows.net/exopsmodule/Microsoft.Online.CSE.PSModule.Client.application" -ErrorAction Stop
+		}
+		Catch
+		{
+			Write-Host "$($_.Exception.Message). Terminating Process"
+			Break
+		}
+	}
+	
+	
+	Import-Module $((Get-ChildItem -Path $($env:LOCALAPPDATA + "\Apps\2.0") -Filter Microsoft.Exchange.Management.ExoPowershellModule.dll -Recurse).FullName |
+		Where-Object { $_ -notmatch "_none_" } | Select-Object -First 1) -Verbose -Global
+	
+	$EXOSession = New-ExoPSSession
+	
+	# Import-PSSession $EXOSession -Prefix EXO -AllowClobber -DisableNameChecking
+	
+	$paramImportModule = @{
+		ModuleInfo = (Import-PSSession $EXOSession -AllowClobber -DisableNameChecking)
+		Global	   = $true
+		ErrorAction = 'Stop'
+		WarningAction = 'SilentlyContinue'
+		PreFix = 'EXO'
+	}
+	
+	Import-Module $paramImportModule
+}
+
+function Start-PShellAsAdmin { Start-Process PowerShell -Verb RunAs }

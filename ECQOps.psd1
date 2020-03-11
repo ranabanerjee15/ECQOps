@@ -78,6 +78,7 @@
 	# Functions to export from this module
 	FunctionsToExport = @(
 		'Connect-365',
+		'Connect-365AzureAD',
 		'Set-FunctionTemplate',
 		'get-LastADSync',
 		'Get-365LicenseStatus',
@@ -87,7 +88,14 @@
 		'Get-365MFAStatus',
 		'Write-Log',
 		'Generate-ComplexPassword',
-		'Split-Array'
+		'Split-Array',
+		'Get-ScriptDirectory',
+		'Get-PSScriptRoot',
+		'Connect-OnpremExchange',
+		'Convert-ExchangeConnectorLogs',
+		'Connect-365MFA',
+		'Connect-O365WithMFA',
+		'Start-PShellAsAdmin'
 	) #For performance, list functions explicitly
 	
 	# Cmdlets to export from this module
