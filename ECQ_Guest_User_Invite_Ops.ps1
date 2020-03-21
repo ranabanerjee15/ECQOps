@@ -28,14 +28,14 @@
 
 #region CertInfo
 
-$appId = '5c343be5-0044-447d-930e-bc71e6d417da'
-$TenantID = 'a0ecd844-047a-45c9-8f3f-0a09574d15d2'
-$objectId = '420e96e4-9d4d-4c51-be62-a12a5dfdb125'
+$ECQAppId = '5c343be5-0044-447d-930e-bc71e6d417da'
+$ECQTenantID = 'a0ecd844-047a-45c9-8f3f-0a09574d15d2'
+# $objectId = '420e96e4-9d4d-4c51-be62-a12a5dfdb125'
 # $secret = 'RjYaR25uu98chNGMQJ:suKZpJZGcq_.['
-$certThumb = '60C46FE7CC836C17D74C21E9D51338FEF5F94A75'
+$ECQcertThumb = '60C46FE7CC836C17D74C21E9D51338FEF5F94A75'
 
 
-Connect-AzureAD -TenantId $TenantID -ApplicationId $appId -CertificateThumbprint $certThumb
+#Connect-AzureAD -TenantId $TenantID -ApplicationId $appId -CertificateThumbprint $certThumb
 
 
 #endregion CertInfo
@@ -251,6 +251,62 @@ function Write-Log
 	}
 }
 
+function New-DynamicParameter
+{
+	[CmdletBinding()]
+	[OutputType('System.Management.Automation.RuntimeDefinedParameter')]
+	param (
+		[Parameter(Mandatory)]
+		[ValidateNotNullOrEmpty()]
+		[string]$Name,
+		[Parameter()]
+		[ValidateNotNullOrEmpty()]
+		[type]$Type = [string],
+		[ValidateNotNullOrEmpty()]
+		[Parameter()]
+		[array]$ValidateSetOptions,
+		[Parameter()]
+		[ValidateNotNullOrEmpty()]
+		[switch]$ValidateNotNullOrEmpty,
+		[Parameter()]
+		[ValidateNotNullOrEmpty()]
+		[ValidateCount(2, 2)]
+		[int[]]$ValidateRange,
+		[Parameter()]
+		[switch]$Mandatory = $false,
+		[Parameter()]
+		[string]$ParameterSetName = '__AllParameterSets',
+		[Parameter()]
+		[switch]$ValueFromPipeline = $false,
+		[Parameter()]
+		[switch]$ValueFromPipelineByPropertyName = $false
+	)
+	
+	$AttribColl = New-Object System.Collections.ObjectModel.Collection[System.Attribute]
+	$ParamAttrib = New-Object System.Management.Automation.ParameterAttribute
+	$ParamAttrib.Mandatory = $Mandatory.IsPresent
+	$ParamAttrib.ParameterSetName = $ParameterSetName
+	$ParamAttrib.ValueFromPipeline = $ValueFromPipeline.IsPresent
+	$ParamAttrib.ValueFromPipelineByPropertyName = $ValueFromPipelineByPropertyName.IsPresent
+	$AttribColl.Add($ParamAttrib)
+	if ($PSBoundParameters.ContainsKey('ValidateSetOptions'))
+	{
+		$AttribColl.Add((New-Object System.Management.Automation.ValidateSetAttribute($ValidateSetOptions)))
+	}
+	if ($PSBoundParameters.ContainsKey('ValidateRange'))
+	{
+		$AttribColl.Add((New-Object System.Management.Automation.ValidateRangeAttribute($ValidateRange)))
+	}
+	if ($ValidateNotNullOrEmpty.IsPresent)
+	{
+		$AttribColl.Add((New-Object System.Management.Automation.ValidateNotNullOrEmptyAttribute))
+	}
+	
+	$RuntimeParam = New-Object System.Management.Automation.RuntimeDefinedParameter($Name, $Type, $AttribColl)
+	$RuntimeParam
+	
+}
+
 function Connect-x365AzureAD
 {
 <#
@@ -297,6 +353,80 @@ function Connect-x365AzureAD
 		Connect-AzureAd -Credential $Credential -ErrorAction Stop
 		#Write-Host "SUCCESS : Successfully Connected to Office 365" -ForegroundColor Green
 		$msg = "Successfully connected to Azure AD Service"
+		Write-Log -Type SUCCESS -Message $msg -Function $MyInvocation.InvocationName -OnScreen | Export-Csv $logfile -Append -NoTypeInformation
+		
+	}
+	catch
+	{
+		$msg = "$($_.Exception.Message). Terminating Process"
+		Write-Log -Type ERROR -Message $msg -Function $MyInvocation.InvocationName -OnScreen | Export-Csv $logfile -Append -NoTypeInformation
+		$script:Proceed = $false
+		break
+		#exit
+	}
+}
+
+function Connect-x365AzureADServicePrincipal
+{
+<#
+	.SYNOPSIS
+		Connects to Azure AD Service using Service Principal
+	
+	.DESCRIPTION
+		Connects to Azure AD Service. This uses PowerShell Module 'AZUREAD'. Please make sure you have installed this Module before running this command
+	
+	.PARAMETER TenantID
+		This is the Tenant ID, you can find this in Active Directory Azure
+	
+	.PARAMETER AppID
+		This is the Application created in Azure Tenant
+	
+	.PARAMETER CertThumbPrint
+		Thumbprint of certificate generated to connect to Azure
+	
+	.EXAMPLE
+		PS C:\> Connect-x365AzureAD -Credential (Get-Credential)
+	
+	.EXAMPLE
+		PS C:\> Connect-x365AzureAD -Credential 'Adminuser@domain.onmicrosoft.com'
+	
+	.EXAMPLE
+		PS C:\> Connect-x365AzureAD -Credential $cred
+	
+	.NOTES
+		In the above example $cred can be a variable which has your credentials stored.
+#>
+	
+	[CmdletBinding()]
+	param
+	(
+		[Parameter(Mandatory = $true)]
+		[string]$TenantID,
+		[Parameter(Mandatory = $true)]
+		[String]$AppID,
+		[Parameter(Mandatory = $true)]
+		[string]$CertThumbPrint
+	)
+	
+	try
+	{
+		$FormatEnumerationLimit = -1
+		
+		$msg = "Trying to Connect to Azure AD Service using Service Principal"
+		Write-Log -Type INFO -Message $msg -Function $MyInvocation.InvocationName -OnScreen | Export-Csv $logfile -Append -NoTypeInformation
+		
+		#Write-Host "INFO : Trying to Connect to Office 365" -ForegroundColor Cyan
+		
+		$paramConnectAzureAD = @{
+			TenantId			  = $TenantID
+			ApplicationId		  = $appId
+			CertificateThumbprint = $CertThumbPrint
+			ErrorAction		      = 'Stop'
+		}
+		
+		Connect-AzureAd @paramConnectAzureAD
+		#Write-Host "SUCCESS : Successfully Connected to Office 365" -ForegroundColor Green
+		$msg = "Successfully connected to Azure AD Service using Service Principal"
 		Write-Log -Type SUCCESS -Message $msg -Function $MyInvocation.InvocationName -OnScreen | Export-Csv $logfile -Append -NoTypeInformation
 		
 	}
@@ -359,10 +489,19 @@ function New-ECQUserInvition
 		This command will invite a new ECQ Tenant User to Elections tenant
 	
 	.DESCRIPTION
-		This command will send new guest invitation to ECQ Tennant user for accessing Sharepoint resources in Elections Tennant 
+		This command will send new guest invitation to ECQ Tennant user for accessing Sharepoint resources in Elections Tennant
 	
 	.PARAMETER DisplayName
 		This will be the Diplay Name of the invited user in ECQ Tennant
+	
+	.PARAMETER EmailAddress
+		A description of the EmailAddress parameter.
+	
+	.PARAMETER Compare
+		A description of the Compare parameter.
+	
+	.PARAMETER ComparedUserSet
+		A description of the ComparedUserSet parameter.
 	
 	.PARAMETER UserPrincipalName
 		This will be the UserPrincipalName of the invited user in ECQ Tennant
@@ -377,53 +516,66 @@ function New-ECQUserInvition
 	[CmdletBinding()]
 	param
 	(
-		[Parameter(Mandatory = $true,
-				   Position = 0)]
 		[ValidateNotNullOrEmpty()]
 		[String]$DisplayName,
-		[Parameter(Mandatory = $true,
-				   Position = 1)]
 		[ValidateNotNullOrEmpty()]
-		[String]$EmailAddress
+		[String]$EmailAddress,
+		[Switch]$Compare
 	)
 	
+	DynamicParam
+	{
+		if ($Compare)
+		{
+			New-DynamicParameter -Name ComparedEmailAddressSet -Type Array -ValidateNotNullOrEmpty -Mandatory
+		}
+	}
+	
 	#TODO: Place script here
-	
-	$null = $obj,$prop
-	
-	Try
+	BEGIN
 	{
-		$paramNewAzureADMSInvitation = @{
-			InvitedUserDisplayName  = $DisplayName
-			InvitedUserEmailAddress = $EmailAddress
-			SendInvitationMessage   = $false
-			InviteRedirectUrl	    = "https://ecqgovelec.sharepoint.com"
-			InvitedUserType		    = 'member'
-			ErrorAction			    = 'Stop'
+		
+	}
+	PROCESS
+	{
+		Try
+		{
+			$paramNewAzureADMSInvitation = @{
+				InvitedUserDisplayName  = $DisplayName
+				InvitedUserEmailAddress = $EmailAddress
+				SendInvitationMessage   = $false
+				InviteRedirectUrl	    = "https://ecqgovelec.sharepoint.com"
+				InvitedUserType		    = 'member'
+				ErrorAction			    = 'Stop'
+			}
+			
+			New-AzureADMSInvitation @paramNewAzureADMSInvitation | Out-Null
+			
+			$prop = [Ordered]@{
+				InvitedUserDisplayname  = $DisplayName
+				InvitedUserEmailAddress = $EmailAddress
+				Status				    = 'Success'
+				Details				    = 'None'
+			}
 		}
-		
-		New-AzureADMSInvitation @paramNewAzureADMSInvitation | Out-Null
-		
-		$prop = [Ordered]@{
-			InvitedUserDisplayname = $DisplayName
-			InvitedUserEmailAddress = $EmailAddress
-			Status				    = 'Success'
-			Details = 'None'
+		Catch
+		{
+			$prop = [Ordered]@{
+				InvitedUserDisplayname  = $DisplayName
+				InvitedUserEmailAddress = $EmailAddress
+				Status				    = 'Failed'
+				Details				    = "Error : $($_.Exception.Message)"
+			}
+		}
+		Finally
+		{
+			$obj = New-Object -TypeName System.Management.Automation.PSObject -Property $prop
+			Write-Output $obj
 		}
 	}
-	Catch
+	END
 	{
-		$prop = [Ordered]@{
-			InvitedUserDisplayname  = $DisplayName
-			InvitedUserEmailAddress = $EmailAddress
-			Status				    = 'Failed'
-			Details				    = "Error : $($_.Exception.Message)"
-		}
-	}
-	Finally
-	{
-		$obj = New-Object -TypeName System.Management.Automation.PSObject -Property $prop
-		Write-Output $obj
+		
 	}
 }
 
@@ -455,16 +607,36 @@ function Main
 		
 		
 		#Connects to ECQ Azure Tenant
-		Connect-x365AzureAD -Credential $ECQAzCreds
+		$paramConnectx365AzureADServicePrincipal = @{
+			TenantID	   = $ECQTenantID
+			AppID		   = $ECQAppId
+			CertThumbPrint = $ECQcertThumb
+		}
+		
+		Connect-x365AzureADServicePrincipal @paramConnectx365AzureADServicePrincipal
 		
 		$msg = "Retriving Users from ECQ Tennant"
 		Write-Log -Type INFO -Function $MyInvocation.InvocationName -Message $msg -OnScreen |
 		Export-Csv $logfile -Append -NoTypeInformation
 		
 		#Retrives all the ECQ users with their DisplayName and UserPrincipalName
-		[Array]$ECQUsers = Get-AzureADUser -All $true -ErrorAction SilentlyContinue |
-		Select-Object Displayname,UserPrincipalName
 		
+		#Users filter based on licenses - SkuId 05e9a617-0261-4cee-bb44-138d3ef5d965 (SPE_E3 )
+		[Array]$RawEcqUsers = Get-AzureADUser -All $true |
+		Where-Object { $_.AssignedLicenses.skuId -eq '05e9a617-0261-4cee-bb44-138d3ef5d965' } |
+		Select-Object UserPrincipalname, DisplayName, AssignedPlans, AssignedLicenses
+		
+		[Array]$EcqUsers = foreach ($user in $RawEcqUsers)
+		{
+			#Sharepoint Enterprise Service ID = '5dbe027f-2339-4123-9542-606e4d348a72'
+			$null = $sp
+			$sp = $user.AssignedPlans | Where-Object { $_.ServicePlanId -eq '5dbe027f-2339-4123-9542-606e4d348a72' }
+			[PSCustomObject]@{
+				UPN = $user.UserPrincipalname
+				DisplayName = $user.DisplayName
+				SharePoint = $sp.CapabilityStatus
+			}
+		}
 		
 		#Only processes the ECQ users if it retrives ECQ users
 		if ($ECQUsers.Count -eq 0)
@@ -497,9 +669,9 @@ function Main
 		Write-Log -Type INFO -Function $MyInvocation.InvocationName -Message $msg -OnScreen |
 		Export-Csv $logfile -Append -NoTypeInformation
 		
-		#Retrives all GUEST users from Elections Tenant with their UserPrincipalName
-		[Array]$ElectionsGuestUsers = Get-AzureADUser -All $true -Filter "UserType eq 'Member'" -ErrorAction SilentlyContinue |
-		Select-Object -ExpandProperty UserPrincipalName
+		#Retrives all users in Elections Tenant who are member of 'APP SharePoint RONET Viewers' Group
+		[Array]$ElectionsGuestUsers = Get-AzureADGroupMember -ObjectId 56bb32a0-5374-42fd-919e-b836b623de02 -All $true |
+		Where-Object CreationType -eq 'Invitation' | Select-Object -ExpandProperty OtherMails
 		
 		if ($ElectionsGuestUsers.Count -eq 0)
 		{
